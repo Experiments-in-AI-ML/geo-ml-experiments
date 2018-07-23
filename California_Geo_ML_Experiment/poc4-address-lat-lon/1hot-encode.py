@@ -1,4 +1,4 @@
-
+import sys
 import pandas as pd
 pd.options.mode.chained_assignment = None
 
@@ -20,8 +20,6 @@ def get_code(s, index, letter):
             return 1.0
         else:
             return 0.0
-
-
 
 def get_endcode(df_builder, df, column_name, num_char, list_char, reverse = False):
     for i in range(num_char):
@@ -45,48 +43,30 @@ def get_endcode_distinct(df_builder, df, column_name):
         df_builder[new_column_name] = df[column_name].apply(lambda x: 1.0 if x==value else 0.0)
 
 #Read data from source
-df = pd.read_csv('input_v2.csv')
-
-#get 10000 rows to test
-#df = df[:10000]
-df = df.drop(columns=['system_id', 'county']).drop_duplicates()
-
-#make builder to extract data
-df_builder = pd.DataFrame()
-
-#Addr_number: Parse directly as a DOUBLE
-df_builder['addr_number'] = df.addr_number.apply(lambda x: float(x) if str(x).isdigit() else None)
-
-#Addr_drctn: split to two fields: YDir=North(1.0)/South(-1.0), XDir=East(1.0)/West(-1.0)
-df_builder.loc[:, 'addr_drctn_XDir'] = df.addr_drctn.apply(lambda x: 1.0 if x == 'E' else (-1.0 if x == 'W' else 0.0))
-df_builder.loc[:, 'addr_drctn_YDir'] = df.addr_drctn.apply(lambda x: 1.0 if x == 'N' else (-1.0 if x == 'S' else 0.0))
-
-#Read config from file
-configs = pd.read_csv('config.csv')
+df = pd.read_csv(sys.argv[1])
+configs = pd.read_csv('fields.cfg')
 
 #Extract with config
+df_builder = pd.DataFrame()
 for i in range(len(configs)):
     config = configs.loc[i,:]
-    #print 'Start extract ' + config['name']
-    if config.type == 1:
-        get_endcode_distinct(df_builder, df, config['name'])
-    else:
-        list_char = letters
-        if config.char_list == 1:
-            list_char = letters_with_numbers
-        last_character = False
-        if config.last_character == 1:
-            last_character = True
-        get_endcode(df_builder, df, config['name'], config.num, list_char, last_character)
+    if config['name'] in df:
+        print('field ' + config['name'] + ": " + config['type'])
+        if config['type'] == 'cat':
+            get_endcode_distinct(df_builder, df, config['name'])
+        else: # one-hot encoding
+            list_char = letters
+            if config['char_list'] == 'withNums':
+                list_char = letters_with_numbers
+            reverse_chars = False
+            if config['reverse_chars'] == 1:
+                reverse_chars = True
+            get_endcode(df_builder, df, config['name'], config['maxLength'], list_char, reverse_chars)
 
-#Mapcol: convert the letter to its ASCII value
-df_builder['mapcol'] = df.mapcol.apply(lambda x: 0 if pd.isna(x) else ord(x))
-
-#Mappage: Parse directly as a DOUBLE
-#Maprow: Parse directly as a DOUBLE
-df_builder['mappage'] = df.mappage.apply(lambda x: float(x) if str(x).isdigit() else None)
-df_builder['maprow'] = df.maprow.apply(lambda x: float(x) if str(x).isdigit() else None)
+#df_builder['mapcol'] = df.mapcol.apply(lambda x: 0 if pd.isna(x) else ord(x))
+#df_builder['mappage'] = df.mappage.apply(lambda x: float(x) if str(x).isdigit() else None)
+#df_builder['maprow'] = df.maprow.apply(lambda x: float(x) if str(x).isdigit() else None)
 
 # Finish! Print to csv
-df_builder.to_csv('forward_face.csv', index=False)
+df_builder.to_csv(sys.argv[1].replace('.data.csv','') + '.1hot.data.csv', index=False)
 

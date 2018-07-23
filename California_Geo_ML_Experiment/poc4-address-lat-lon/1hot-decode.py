@@ -1,23 +1,9 @@
+import sys
 import pandas as pd
 pd.options.mode.chained_assignment = None
 
-df = pd.read_csv('forward_face.csv')
+df = pd.read_csv(sys.argv[1])
 df_builder = pd.DataFrame()
-
-df_builder['addr_number'] = (df.addr_number.apply(lambda x: int(x) if pd.notna(x) else x)).astype('object')
-
-def get_addr_drctn(X):
-    if (X['addr_drctn_XDir'] == 1.0):
-        return 'E'
-    if (X['addr_drctn_XDir'] == -1.0):
-        return 'W'
-    if (X['addr_drctn_YDir'] == 1.0):
-        return 'N'
-    if (X['addr_drctn_YDir'] == -1.0):
-        return 'S'
-    return ''
-
-df_builder['addr_drctn'] = df[['addr_drctn_XDir', 'addr_drctn_YDir']].apply(lambda x: get_addr_drctn(x), axis=1)
 
 def get_string_char(X, column_name, num_char, list_char):
     ret = ''
@@ -50,25 +36,19 @@ def get_string_distinct(X, column_name):
             return new_name.split(':')[-1]
 
 #Read config from file
-configs = pd.read_csv('config.csv')
+configs = pd.read_csv(sys.argv[2])
 
 #Extract with config
 for i in range(len(configs)):
     config = configs.loc[i,:]
     #print 'Start extract ' + config['name']
-    if config.type == 1:
+    if config['type'] == 'cat':
         df_builder[config['name']] = df.apply(lambda x: get_string_distinct(x, config['name']), axis=1)
     else:
         list_char = letters
-        if config.char_list == 1:
+        if config['char_list'] == 'withNums':
             list_char = letters_with_numbers
-        df_builder[config['name']] = df.apply(lambda x: get_string_char(x, config['name'], config.num, list_char), axis=1)
+        df_builder[config['name']] = df.apply(lambda x: get_string_char(x, config['name'], config['maxLength'], list_char), axis=1)
         
-df_builder['mapcol'] = df.mapcol.apply(lambda x: chr(x))
-
-df_builder['mappage'] = (df.mappage.apply(lambda x: int(x) if pd.notna(x) else x)).astype('object')
-df_builder['maprow'] = (df.maprow.apply(lambda x: int(x) if pd.notna(x) else x)).astype('object')
-
-df_builder.to_csv('reverse.csv', index=False)
-
+df_builder.to_csv(sys.argv[3], index=False)
 

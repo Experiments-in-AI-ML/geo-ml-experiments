@@ -15,5 +15,8 @@ df['zip'] = df['key'].map(lambda str: str.split(',')[3].strip())
 
 df = df[['address', 'zip', 'lat', 'lon']]
 
-df.to_csv('step1.csv', sep=',', encoding='utf-8', index=False)
+df.to_csv('address-zip-lat-lon.data.csv', sep=',', encoding='utf-8', index=False)
 
+df = df[['address', 'zip']]
+
+df.to_csv('address-zip.data.csv', sep=',', encoding='utf-8', index=False)
